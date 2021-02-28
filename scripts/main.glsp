@@ -1,10 +1,19 @@
+(let :red '(255, 0, 0, 255))
+(let :black '(0, 0, 0, 255))
+(let :white '(255, 255, 255, 255))
+(let :green '(0, 255, 0, 255))
+
 (def circle-x 10.0)
 (def circle-y 10.0)
 (def circle-speed 50.0)
 (def circle-radius 30.0)
-(let circle-color '(0, 150, 50, 255))
+(let circle-color :green)
 
 (defn engine:update (dt)
   (inc! circle-x (* dt circle-speed))
-  (inc! circle-y (* dt circle-speed))
-  (draw-circle circle-x circle-y circle-radius circle-color))
+  (inc! circle-y (* dt circle-speed)))
+
+(defn engine:draw ()
+  (clear-background :black)
+  (draw-circle circle-x circle-y circle-radius circle-color)
+  (draw-text "Hi" 30.0 30.0 30.0 :white))
