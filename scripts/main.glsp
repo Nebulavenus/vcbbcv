@@ -1,0 +1,10 @@
+(def circle-x 10.0)
+(def circle-y 10.0)
+(def circle-speed 50.0)
+(def circle-radius 30.0)
+(let circle-color '(0, 150, 50, 255))
+
+(defn engine:update (dt)
+  (inc! circle-x (* dt circle-speed))
+  (inc! circle-y (* dt circle-speed))
+  (draw-circle circle-x circle-y circle-radius circle-color))
