@@ -2,18 +2,51 @@
 (let :black '(0, 0, 0, 255))
 (let :white '(255, 255, 255, 255))
 (let :green '(0, 255, 0, 255))
+(let :yellow '(255, 255, 0, 255))
 
-(def circle-x 10.0)
-(def circle-y 10.0)
-(def circle-speed 50.0)
-(def circle-radius 30.0)
-(let circle-color :green)
+(defstruct Circle
+  x y s r
+
+  (met overlaps? (other-circle)
+    (let [x y r] other-circle)
+    (let rr (+ @r r))
+    (let dx (- @x x))
+    (let dy (- @y y))
+    (> (pow rr 2) (+ (pow dx 2) (pow dy 2))))
+  
+  (met draw (color)
+    (draw-circle @x @y @r color)))
+
+(def first-circle (Circle
+  (x 10.0)
+  (y 10.0)
+  (s 50.0)
+  (r 30.0)))
+
+(def player-color :white)
+(def player-circle (Circle
+  (x 90.0)
+  (y 90.0)
+  (s 50.0)
+  (r 30.0)))
 
 (defn engine:update (dt)
-  (inc! circle-x (* dt circle-speed))
-  (inc! circle-y (* dt circle-speed)))
+  ; just move first circle
+  (let speed [first-circle 's])
+  (inc! [first-circle 'x] (* dt speed))
+  (inc! [first-circle 'y] (* dt speed))
+
+  ; check for overlapping and change color
+  (cond
+    ((.overlaps? first-circle player-circle)
+      (= player-color :yellow)) ; overlapped
+    (else
+      (= player-color :white)))) ; not
 
 (defn engine:draw ()
   (clear-background :black)
-  (draw-circle circle-x circle-y circle-radius circle-color)
+
+  (.draw player-circle player-color)
+  (.draw first-circle :green)
+
   (draw-text "Hi" 30.0 30.0 30.0 :white))
