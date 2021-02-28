@@ -41,7 +41,25 @@
     ((.overlaps? first-circle player-circle)
       (= player-color :yellow)) ; overlapped
     (else
-      (= player-color :white)))) ; not
+      (= player-color :white))) ; not
+
+  ; move player position based on input
+  (let speed [player-circle 's])
+  (when (down? 'key:up)
+    (dec! [player-circle 'y] (* dt speed)))
+  (when (down? 'key:down)
+    (inc! [player-circle 'y] (* dt speed)))
+  (when (down? 'key:right)
+    (inc! [player-circle 'x] (* dt speed)))
+  (when (down? 'key:left)
+    (dec! [player-circle 'x] (* dt speed)))
+
+  ; change radius based on input
+  (when (pressed? 'key:f)
+    (inc! [player-circle 'r] 1.0))
+  (when (pressed? 'key:r)
+    (dec! [player-circle 'r] 1.0))
+)
 
 (defn engine:draw ()
   (clear-background :black)
