@@ -1,0 +1,7 @@
+[package]
+name = "vcbbcv"
+version = "0.1.0"
+authors = ["Nebula Venus <nebulavenus@tuta.io>"]
+edition = "2018"
+
+[dependencies]
