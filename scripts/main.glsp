@@ -58,8 +58,7 @@
   (when (pressed? 'key:f)
     (inc! [player-circle 'r] 1.0))
   (when (pressed? 'key:r)
-    (dec! [player-circle 'r] 1.0))
-)
+    (dec! [player-circle 'r] 1.0)))
 
 (defn engine:draw ()
   (clear-background :black)

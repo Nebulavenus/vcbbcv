@@ -5,15 +5,27 @@ use macroquad::prelude::*;
 
 // draw wrappers
 
-fn clear_background_wrapper(color: (u8, u8, u8, u8)) -> GResult<()> {
-    let c = color_u8!(color.0, color.1, color.2, color.3);
+fn clear_background_wrapper(color: [u8; 4]) -> GResult<()> {
+    let c = color_u8!(color[0], color[1], color[2], color[3]);
     clear_background(c);
     Ok(())
 }
 
-fn draw_circle_wrapper(x: f32, y: f32, r: f32, color: (u8, u8, u8, u8)) -> GResult<()> {
-    let c = color_u8!(color.0, color.1, color.2, color.3);
+fn draw_circle_wrapper(x: f32, y: f32, r: f32, color: [u8; 4]) -> GResult<()> {
+    let c = color_u8!(color[0], color[1], color[2], color[3]);
     draw_circle(x, y, r, c);
+    Ok(())
+}
+
+fn draw_triangle_lines_wrapper(
+    v1: [f32; 2],
+    v2: [f32; 2],
+    v3: [f32; 2],
+    thickness: f32,
+    color: [u8; 4],
+) -> GResult<()> {
+    let c = color_u8!(color[0], color[1], color[2], color[3]);
+    draw_triangle_lines(v1.into(), v2.into(), v3.into(), thickness, c);
     Ok(())
 }
 
@@ -176,17 +188,18 @@ async fn main() {
     let runtime = Runtime::new();
 
     runtime.run(|| {
-        // Load scripts
-        glsp::load("scripts/main.glsp")?;
-
         // Bind draw functions
         glsp::bind_rfn("clear-background", &clear_background_wrapper)?;
         glsp::bind_rfn("draw-circle", &draw_circle_wrapper)?;
+        glsp::bind_rfn("draw-triangle-lines", &draw_triangle_lines_wrapper)?;
         glsp::bind_rfn("draw-text", &draw_text_wrapper)?;
 
         // Bind input functions
         glsp::bind_rfn("down?", &is_key_down_wrapper)?;
         glsp::bind_rfn("pressed?", &is_key_pressed_wrapper)?;
+
+        // Load scripts
+        glsp::load("scripts/asteroids.glsp")?;
 
         Ok(())
     });

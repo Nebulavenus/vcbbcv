@@ -1,0 +1,178 @@
+(let :red '(255, 0, 0, 255))
+(let :black '(0, 0, 0, 255))
+(let :white '(255, 255, 255, 255))
+(let :green '(0, 255, 0, 255))
+(let :yellow '(255, 255, 0, 255))
+
+(defclass Vec2
+  (field x)
+  (field y)
+
+  (init (@x @y))
+
+  (const zero (fn0 (Vec2 0.0 0.0)))
+
+  (met copy ()
+    (Vec2 @x @y))
+
+  ; examine macroses to overload + for vec2
+  (met add-val (val)
+    (inc! @x val)
+    (inc! @y val))
+
+  (met mul-val (val)
+    (mul! @x val)
+    (mul! @y val))
+
+  (met div-val (val)
+    (div! @x val)
+    (div! @y val))
+
+  (met add-vec (other-vec : (is? other-vec Vec2))
+    (let [x y] other-vec)
+    (inc! @x x)
+    (inc! @y y))
+  
+  (met neg ()
+    (neg! @x)
+    (neg! @y))
+
+  (met split ()
+    (arr @x @y)))
+
+(let :ship-height 64.0)
+(let :ship-base 32.0)
+(let :ship-speed 10.0)
+(let :ship-rotate 5.0)
+(defclass Ship
+  (field pos)
+  (field rot)
+  (field vel)
+
+  (init ()
+    (@reset))
+
+  (met reset ()
+    (= @pos (.zero Vec2))
+    (= @rot 0.0)
+    (= @vel (.zero Vec2)))
+
+  (met update (dt)
+    ; handle acceleration input & logic
+    ;(let acc (clone @vel))
+    ;(let acc (Vec2 [@vel 'x] [@vel 'y]))
+    (let acc (.copy @vel))
+    (.neg acc)
+    (.div-val acc 10.0)
+    (when (down? 'key:up)
+      (let dir (Vec2 (sin @rot) (- (cos @rot))))
+      (.div-val dir 3.0)
+      (= acc dir))
+
+    (.add-vec @vel acc)
+
+    ; handle rotation input
+    (when (down? 'key:down)
+      (inc! [@vel 'y] (* dt :ship-speed)))
+    (when (down? 'key:right)
+      (inc! @rot (* dt :ship-rotate)))
+    (when (down? 'key:left)
+      (dec! @rot (* dt :ship-rotate)))
+
+    ; simple movement
+    ;(.add-val @vel (* dt :ship-speed))
+    ;(.add-vec @vel (.mul-val @vel (* dt :ship-speed))
+    (.add-vec @pos @vel))
+
+  (met draw ()
+    ;(let px [@pos 'x])
+    ;(let py [@pos 'y])
+    (let [(x px) (y py)] @pos)
+    (let ship-height-x (* (sin @rot) (/ :ship-height 2.0)))
+    (let ship-height-y (* (cos @rot) (/ :ship-height 2.0)))
+    (let ship-base-x (* (cos @rot) (/ :ship-base 2.0)))
+    (let ship-base-y (* (sin @rot) (/ :ship-base 2.0)))
+    (let v1 (Vec2
+      (+ px ship-height-x) (- py ship-height-y)))
+    (let v2 (Vec2
+      (- (- px ship-base-x) ship-height-x)
+      (+ (- py ship-base-y) ship-height-y)))
+    (let v3 (Vec2
+      (- (+ px ship-base-x) ship-height-x)
+      (+ (+ py ship-base-y) ship-height-y)))
+    (draw-triangle-lines
+      (.split v1)
+      (.split v2)
+      (.split v3)
+      5.0
+      :green)))
+
+(def player-ship (Ship))
+
+(defstruct Circle
+  x y s r
+
+  (met overlaps? (other-circle)
+    (let [x y r] other-circle)
+    (let rr (+ @r r))
+    (let dx (- @x x))
+    (let dy (- @y y))
+    (> (pow rr 2) (+ (pow dx 2) (pow dy 2))))
+  
+  (met draw (color)
+    (draw-circle @x @y @r color)))
+
+(def first-circle (Circle
+  (x 10.0)
+  (y 10.0)
+  (s 50.0)
+  (r 30.0)))
+
+(def player-color :white)
+(def player-circle (Circle
+  (x 90.0)
+  (y 90.0)
+  (s 50.0)
+  (r 30.0)))
+
+(defn engine:update (dt)
+  ; just move first circle
+  (let speed [first-circle 's])
+  (inc! [first-circle 'x] (* dt speed))
+  (inc! [first-circle 'y] (* dt speed))
+
+  ; check for overlapping and change color
+  (cond
+    ((.overlaps? first-circle player-circle)
+      (= player-color :yellow)) ; overlapped
+    (else
+      (= player-color :white))) ; not
+
+  ; move player position based on input
+  (let speed [player-circle 's])
+  (when (down? 'key:up)
+    (dec! [player-circle 'y] (* dt speed)))
+  (when (down? 'key:down)
+    (inc! [player-circle 'y] (* dt speed)))
+  (when (down? 'key:right)
+    (inc! [player-circle 'x] (* dt speed)))
+  (when (down? 'key:left)
+    (dec! [player-circle 'x] (* dt speed)))
+
+  ; change radius based on input
+  (when (pressed? 'key:f)
+    (inc! [player-circle 'r] 1.0))
+  (when (pressed? 'key:r)
+    (dec! [player-circle 'r] 1.0))
+
+  ; update player
+  (.update player-ship dt))
+
+(defn engine:draw ()
+  (clear-background :black)
+
+  (.draw player-circle player-color)
+  (.draw first-circle :green)
+  (.draw player-ship)
+
+  (draw-text "Hi" 30.0 30.0 30.0 :white))
