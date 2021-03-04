@@ -74,13 +74,19 @@
   (field rot)
   (field vel)
 
+  (field last-shot)
+  (field shot-interval 0.2)
+
   (init ()
     (@reset))
 
   (met reset ()
-    (= @pos (.zero Vec2))
+    ; spawn in the middle of the screen
+    (let (w h) (screen-size))
+    (= @pos (Vec2 (/ w 2) (/ h 2)))
     (= @rot 0.0)
-    (= @vel (.zero Vec2)))
+    (= @vel (.zero Vec2))
+    (= @last-shot 0.0))
 
   ; passed dt and game variables are probably redundant and I should just use globals?
   (met update (dt, sst, game) ; delta time = dt, since start time = sst
@@ -107,8 +113,12 @@
     (when (down? 'key:left)
       (dec! @rot (* dt @rot-speed)))
     
-    ; handle fire input
-    (when (down? 'key:space)
+    ; handle fire input & shot if button pressed and shot interval is satisfied
+    (when (and (down? 'key:space) (> (- sst @last-shot) @shot-interval))
+      ; update when last shot
+      (= @last-shot sst)
+
+      ; create bullet
       (let rot (Vec2 (sin @rot) (- (cos @rot))))
 
       (let vel (.copy rot))
@@ -188,66 +198,123 @@
     (let [x y] @pos)
     (draw-poly-lines x y @sides @size @rot 2.0 :yellow)))
 
+#|
+state hierarchy for Game is:
+  (fsm
+    (state* Waiting)  ; like a menu screen
+    (state Playing)   ; gameplay
+    (state GameOver)) ; score screen
+|#
+
 (defclass Game
+  (field player)
   (field bullets)
   (field asteroids) ; array of asteroid class
 
   (init ()
-    ; init fields
-    (= @bullets (arr))
-    (= @asteroids (arr))
+    (@reset))
 
-    ; by default spawn some asteroids
+  (met reset ()
+    (= @player (Ship))
+    (= @bullets (arr))
+    (= @asteroids (arr)))
+
+  ; by default spawn some asteroids
+  (met init-asteroids (n)
     (let (w h) (screen-size))
-    (forn (_ 10)
-      (let pos (Vec2 (flo (rand w)) (flo (rand h))))
+    (forn (_ n)
+      (let pos (Vec2 (rand w) (rand h)))
       (let vel (Vec2 (rand -1.0 1.0) (rand -1.0 1.0)))
       (push! @asteroids (Asteroid pos vel))))
+
+  (met spawn-some-asteroids ()
+    (let (w h) (screen-size))
+    (let pos (Vec2 (rand w (- w 10.0)) (rand h (- h 10.0))))
+    (let vel (Vec2 (rand -1.0 1.0) (rand -1.0 1.0)))
+    (push! @asteroids (Asteroid pos vel)))
 
   (met add-bullet (bullet : (is? bullet Bullet))
     (push! @bullets bullet))
 
-  (met update (dt, sst)
-    ; kill all unrelevant entities
-    (retain! (fn1 (.ranout? _ sst)) @bullets) ; _ is a bullet, just check fn1 in reference
+  (met update (dt, sst))
 
-    ; yielding spawn for asteroids
+  (met draw ())
 
-    ; update bullets logic
-    (for bul in @bullets
-      (.update bul dt))
+  (fsm
+    ; main screen menu
+    (state* Waiting
+      (wrap Main:update (dt, sst)
+        (when (pressed? 'key:enter)
+          (@enab! 'Playing)))
 
-    ; update asteroids logic
-    (for ast in @asteroids
-      (.update ast dt)))
+      (wrap Main:draw ()
+        (let font-size 30.0)
+        (let (w h) (screen-size))
+        (draw-text "Best game ever!" (/ w 2.5) (/ h 2.2) font-size :white)
+        (draw-text "Press enter." (/ w 2.4) (/ h 2) font-size :white))),
+    ; gameplay
+    (state Playing
+      (wrap Main:update (dt, sst)
+        ; kill all unrelevant entities
+        (retain! (fn1 (.ranout? _ sst)) @bullets) ; _ is a bullet, just check fn1 in reference
 
-  (met draw ()
-    ; draw bullets
-    (for bul in @bullets
-      (.draw bul))
+        (@enab! 'GameOver)
+        ; yielding spawn for asteroids
 
-    ; draw asteroids
-    (for ast in @asteroids
-      (.draw ast))))
+        ; if len of asteroids is getting smaller spawn new incoming from screen sides
+        (when (< (len @asteroids) 10)
+          (@spawn-some-asteroids))
 
-;  (met overlaps? (other-circle)
-;    (let [x y r] other-circle)
-;    (let rr (+ @r r))
-;    (let dx (- @x x))
-;    (let dy (- @y y))
-;    (> (pow rr 2) (+ (pow dx 2) (pow dy 2))))
+        ; update player's logic
+        (.update @player dt sst @self)
+
+        ; update bullets logic
+        (for bul in @bullets
+          (.update bul dt))
+
+        ; update asteroids logic
+        (for ast in @asteroids
+          (.update ast dt)))
+
+      (wrap Main:draw ()
+        ; draw bullets
+        (for bul in @bullets
+          (.draw bul))
+
+        ; draw asteroids
+        (for ast in @asteroids
+          (.draw ast))
+          
+        ; draw player
+        (.draw @player))),
+    ; score screen
+    (state GameOver
+      (const s-to-skip 1.0)
+      (field timer 0.0) ; to not to skip accidentally
+
+      (wrap Main:update (dt, sst)
+        (inc! @timer dt)
+
+        (when (>= @timer @s-to-skip)
+          (when (any? pressed? '(key:enter key:up key:down key:right key:left))
+            (@reset)
+            (@enab! 'Waiting)
+            (return)),))
+
+      (wrap Main:draw ()
+        (let font-size 30.0)
+        (let (w h) (screen-size))
+        (draw-text "Your score is: 0!" (/ w 2.5) (/ h 2.2) font-size :white)
+        (when (>= @timer @s-to-skip)
+          (draw-text "Press any key." (/ w 2.4) (/ h 2) font-size :white))
+        (return))),))
 
 (def game (Game))
-(def player-ship (Ship))
 
 (defn engine:update (dt)
   (let sst (get-time)) ; time since start
-
-  (.update game dt sst)
-  (.update player-ship dt sst game))
+  (.update game dt sst))
 
 (defn engine:draw ()
   (clear-background :black)
-  (.draw game)
-  (.draw player-ship)
-  (draw-text "Hi" 30.0 30.0 30.0 :white))
+  (.draw game))
