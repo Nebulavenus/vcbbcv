@@ -29,6 +29,20 @@ fn draw_triangle_lines_wrapper(
     Ok(())
 }
 
+fn draw_poly_lines_wrapper(
+    x: f32,
+    y: f32,
+    sides: u8,
+    radius: f32,
+    rotation: f32,
+    thickness: f32,
+    color: [u8; 4],
+) -> GResult<()> {
+    let c = color_u8!(color[0], color[1], color[2], color[3]);
+    draw_poly_lines(x, y, sides, radius, rotation, thickness, c);
+    Ok(())
+}
+
 fn draw_text_wrapper(
     text: &str,
     x: f32,
@@ -183,14 +197,39 @@ fn is_key_pressed_wrapper(key: GlspKeyCode) -> GResult<bool> {
     Ok(is_key_pressed(key.0))
 }
 
-#[macroquad::main("Something")]
+// window wrappers
+
+fn screen_size_wrapper() -> GResult<(f32, f32)> {
+    let width = screen_width();
+    let height = screen_height();
+    Ok((width, height))
+}
+
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Something".to_owned(),
+        window_width: 800,
+        window_height: 600,
+        fullscreen: false,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main("window_conf")]
 async fn main() {
+    // Window settings
+
+    // Scripting
     let runtime = Runtime::new();
 
     runtime.run(|| {
+        // Bind window specific functions
+        glsp::bind_rfn("screen-size", &screen_size_wrapper)?;
+
         // Bind draw functions
         glsp::bind_rfn("clear-background", &clear_background_wrapper)?;
         glsp::bind_rfn("draw-circle", &draw_circle_wrapper)?;
+        glsp::bind_rfn("draw-poly-lines", &draw_poly_lines_wrapper)?;
         glsp::bind_rfn("draw-triangle-lines", &draw_triangle_lines_wrapper)?;
         glsp::bind_rfn("draw-text", &draw_text_wrapper)?;
 

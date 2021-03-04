@@ -33,6 +33,16 @@
     (inc! @x x)
     (inc! @y y))
   
+  (met length ()
+    (let xx (pow @x 2))
+    (let yy (pow @y 2))
+    (sqrt (+ xx yy)))
+  
+  (met normalize ()
+    (let l (.length @self))
+    (div! @x l)
+    (div! @y l))
+  
   (met neg ()
     (neg! @x)
     (neg! @y))
@@ -40,11 +50,26 @@
   (met split ()
     (arr @x @y)))
 
-(let :ship-height 64.0)
-(let :ship-base 32.0)
-(let :ship-speed 10.0)
-(let :ship-rotate 5.0)
+(defn wrap-around (vec : (is? vec Vec2)) ; todo: check for i32 or f32 in vec
+  (let vr (.copy vec))
+  (let (width height) (screen-size)) ; (f32 f32) returned
+  (cond
+    ((> [vr 'x] width)
+      (= [vr 'x] 0.0))
+    ((< [vr 'x] 0.0)
+      (= [vr 'x] width))
+    ((> [vr 'y] height)
+      (= [vr 'y] 0.0))
+    ((< [vr 'y] 0.0)
+      (= [vr 'y] height)))
+  (return vr))
+
 (defclass Ship
+  (const vis-height 28.0)
+  (const vis-base 18.0)
+  (const mov-speed 10.0)
+  (const rot-speed 5.0)
+
   (field pos)
   (field rot)
   (field vel)
@@ -59,8 +84,6 @@
 
   (met update (dt)
     ; handle acceleration input & logic
-    ;(let acc (clone @vel))
-    ;(let acc (Vec2 [@vel 'x] [@vel 'y]))
     (let acc (.copy @vel))
     (.neg acc)
     (.div-val acc 10.0)
@@ -70,28 +93,33 @@
       (= acc dir))
 
     (.add-vec @vel acc)
+    
+    ; constrain max speed
+    (let max-speed 5.0)
+    (when (> (.length @vel) max-speed)
+      (.normalize @vel)
+      (.mul-val @vel max-speed))
 
     ; handle rotation input
     (when (down? 'key:down)
-      (inc! [@vel 'y] (* dt :ship-speed)))
+      (inc! [@vel 'y] (* dt @mov-speed)))
     (when (down? 'key:right)
-      (inc! @rot (* dt :ship-rotate)))
+      (inc! @rot (* dt @rot-speed)))
     (when (down? 'key:left)
-      (dec! @rot (* dt :ship-rotate)))
+      (dec! @rot (* dt @rot-speed)))
 
     ; simple movement
-    ;(.add-val @vel (* dt :ship-speed))
-    ;(.add-vec @vel (.mul-val @vel (* dt :ship-speed))
-    (.add-vec @pos @vel))
+    (.add-vec @pos @vel)
+    
+    ; wrap around the screen
+    (= @pos (wrap-around @pos)))
 
   (met draw ()
-    ;(let px [@pos 'x])
-    ;(let py [@pos 'y])
     (let [(x px) (y py)] @pos)
-    (let ship-height-x (* (sin @rot) (/ :ship-height 2.0)))
-    (let ship-height-y (* (cos @rot) (/ :ship-height 2.0)))
-    (let ship-base-x (* (cos @rot) (/ :ship-base 2.0)))
-    (let ship-base-y (* (sin @rot) (/ :ship-base 2.0)))
+    (let ship-height-x (* (sin @rot) (/ @vis-height 2.0)))
+    (let ship-height-y (* (cos @rot) (/ @vis-height 2.0)))
+    (let ship-base-x (* (cos @rot) (/ @vis-base 2.0)))
+    (let ship-base-y (* (sin @rot) (/ @vis-base 2.0)))
     (let v1 (Vec2
       (+ px ship-height-x) (- py ship-height-y)))
     (let v2 (Vec2
@@ -107,72 +135,67 @@
       5.0
       :green)))
 
+(defclass Asteroid
+  (field rot-speed (rand -2.0 2.0))
+  (field size (rand 20.0 80.0))
+  (field sides (rand 3 7))
+
+  (field pos)
+  (field rot)
+  (field vel)
+
+  (init (@pos @vel)
+    (= @rot 0.0))
+
+  (met update (dt)
+    (inc! @rot @rot-speed)
+    (.add-vec @pos @vel)
+    (= @pos (wrap-around @pos)))
+
+  (met draw ()
+    (let [x y] @pos)
+    (draw-poly-lines x y @sides @size @rot 2.0 :yellow)))
+
+(defclass Game
+  (field asteroids) ; array of asteroid class
+
+  (init ()
+    ; by default spawn some asteroids
+    (= @asteroids (arr))
+    (let (w h) (screen-size))
+    (forn (_ 10)
+      (let pos (Vec2 (flo (rand w)) (flo (rand h))))
+      (let vel (Vec2 (rand -1.0 1.0) (rand -1.0 1.0)))
+      (push! @asteroids (Asteroid pos vel))))
+
+  (met update (dt)
+    ; yielding spawn
+
+    ; update asteroids logic
+    (for ast in @asteroids
+      (.update ast dt)))
+
+  (met draw ()
+    ; draw asteroids
+    (for ast in @asteroids
+      (.draw ast))))
+
+;  (met overlaps? (other-circle)
+;    (let [x y r] other-circle)
+;    (let rr (+ @r r))
+;    (let dx (- @x x))
+;    (let dy (- @y y))
+;    (> (pow rr 2) (+ (pow dx 2) (pow dy 2))))
+
+(def game (Game))
 (def player-ship (Ship))
 
-(defstruct Circle
-  x y s r
-
-  (met overlaps? (other-circle)
-    (let [x y r] other-circle)
-    (let rr (+ @r r))
-    (let dx (- @x x))
-    (let dy (- @y y))
-    (> (pow rr 2) (+ (pow dx 2) (pow dy 2))))
-  
-  (met draw (color)
-    (draw-circle @x @y @r color)))
-
-(def first-circle (Circle
-  (x 10.0)
-  (y 10.0)
-  (s 50.0)
-  (r 30.0)))
-
-(def player-color :white)
-(def player-circle (Circle
-  (x 90.0)
-  (y 90.0)
-  (s 50.0)
-  (r 30.0)))
-
 (defn engine:update (dt)
-  ; just move first circle
-  (let speed [first-circle 's])
-  (inc! [first-circle 'x] (* dt speed))
-  (inc! [first-circle 'y] (* dt speed))
-
-  ; check for overlapping and change color
-  (cond
-    ((.overlaps? first-circle player-circle)
-      (= player-color :yellow)) ; overlapped
-    (else
-      (= player-color :white))) ; not
-
-  ; move player position based on input
-  (let speed [player-circle 's])
-  (when (down? 'key:up)
-    (dec! [player-circle 'y] (* dt speed)))
-  (when (down? 'key:down)
-    (inc! [player-circle 'y] (* dt speed)))
-  (when (down? 'key:right)
-    (inc! [player-circle 'x] (* dt speed)))
-  (when (down? 'key:left)
-    (dec! [player-circle 'x] (* dt speed)))
-
-  ; change radius based on input
-  (when (pressed? 'key:f)
-    (inc! [player-circle 'r] 1.0))
-  (when (pressed? 'key:r)
-    (dec! [player-circle 'r] 1.0))
-
-  ; update player
+  (.update game dt)
   (.update player-ship dt))
 
 (defn engine:draw ()
   (clear-background :black)
-
-  (.draw player-circle player-color)
-  (.draw first-circle :green)
+  (.draw game)
   (.draw player-ship)
-
   (draw-text "Hi" 30.0 30.0 30.0 :white))
