@@ -16,15 +16,15 @@
     (Vec2 @x @y))
 
   ; examine macroses to overload + for vec2
-  (met add-val (val)
+  (met add-val (val : num?)
     (inc! @x val)
     (inc! @y val))
 
-  (met mul-val (val)
+  (met mul-val (val : num?)
     (mul! @x val)
     (mul! @y val))
 
-  (met div-val (val)
+  (met div-val (val : num?)
     (div! @x val)
     (div! @y val))
 
@@ -82,7 +82,8 @@
     (= @rot 0.0)
     (= @vel (.zero Vec2)))
 
-  (met update (dt)
+  ; passed dt and game variables are probably redundant and I should just use globals?
+  (met update (dt, sst, game) ; delta time = dt, since start time = sst
     ; handle acceleration input & logic
     (let acc (.copy @vel))
     (.neg acc)
@@ -101,12 +102,24 @@
       (.mul-val @vel max-speed))
 
     ; handle rotation input
-    (when (down? 'key:down)
-      (inc! [@vel 'y] (* dt @mov-speed)))
     (when (down? 'key:right)
       (inc! @rot (* dt @rot-speed)))
     (when (down? 'key:left)
       (dec! @rot (* dt @rot-speed)))
+    
+    ; handle fire input
+    (when (down? 'key:space)
+      (let rot (Vec2 (sin @rot) (- (cos @rot))))
+
+      (let vel (.copy rot))
+      (.mul-val vel [Bullet 'speed]) ; ship rot dir by bullet's constant speed
+
+      (let pos (.copy @pos))
+      (.mul-val rot (/ @vis-height 2.0))
+      (.add-vec pos rot)
+
+      (let bullet (Bullet pos vel sst))
+      (.add-bullet game bullet))
 
     ; simple movement
     (.add-vec @pos @vel)
@@ -135,6 +148,25 @@
       5.0
       :green)))
 
+(defclass Bullet
+  (const speed 7.0)
+  (const lifetime 1.5)
+  (field pos)
+  (field vel)
+  (field shot-at)
+
+  (init (@pos @vel @shot-at))
+
+  (met ranout? (cur-t)
+    (> (+ @shot-at @lifetime) cur-t))
+
+  (met update (dt)
+    (.add-vec @pos @vel))
+
+  (met draw ()
+    (let [x y] @pos)
+    (draw-circle x y 2.0 :red)))
+
 (defclass Asteroid
   (field rot-speed (rand -2.0 2.0))
   (field size (rand 20.0 80.0))
@@ -157,25 +189,43 @@
     (draw-poly-lines x y @sides @size @rot 2.0 :yellow)))
 
 (defclass Game
+  (field bullets)
   (field asteroids) ; array of asteroid class
 
   (init ()
-    ; by default spawn some asteroids
+    ; init fields
+    (= @bullets (arr))
     (= @asteroids (arr))
+
+    ; by default spawn some asteroids
     (let (w h) (screen-size))
     (forn (_ 10)
       (let pos (Vec2 (flo (rand w)) (flo (rand h))))
       (let vel (Vec2 (rand -1.0 1.0) (rand -1.0 1.0)))
       (push! @asteroids (Asteroid pos vel))))
 
-  (met update (dt)
-    ; yielding spawn
+  (met add-bullet (bullet : (is? bullet Bullet))
+    (push! @bullets bullet))
+
+  (met update (dt, sst)
+    ; kill all unrelevant entities
+    (retain! (fn1 (.ranout? _ sst)) @bullets) ; _ is a bullet, just check fn1 in reference
+
+    ; yielding spawn for asteroids
+
+    ; update bullets logic
+    (for bul in @bullets
+      (.update bul dt))
 
     ; update asteroids logic
     (for ast in @asteroids
       (.update ast dt)))
 
   (met draw ()
+    ; draw bullets
+    (for bul in @bullets
+      (.draw bul))
+
     ; draw asteroids
     (for ast in @asteroids
       (.draw ast))))
@@ -191,8 +241,10 @@
 (def player-ship (Ship))
 
 (defn engine:update (dt)
-  (.update game dt)
-  (.update player-ship dt))
+  (let sst (get-time)) ; time since start
+
+  (.update game dt sst)
+  (.update player-ship dt sst game))
 
 (defn engine:draw ()
   (clear-background :black)

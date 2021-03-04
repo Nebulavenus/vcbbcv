@@ -205,6 +205,10 @@ fn screen_size_wrapper() -> GResult<(f32, f32)> {
     Ok((width, height))
 }
 
+fn get_time_wrapper() -> GResult<f32> {
+    Ok(get_time() as f32)
+}
+
 fn window_conf() -> Conf {
     Conf {
         window_title: "Something".to_owned(),
@@ -225,6 +229,7 @@ async fn main() {
     runtime.run(|| {
         // Bind window specific functions
         glsp::bind_rfn("screen-size", &screen_size_wrapper)?;
+        glsp::bind_rfn("get-time", &get_time_wrapper)?;
 
         // Bind draw functions
         glsp::bind_rfn("clear-background", &clear_background_wrapper)?;
