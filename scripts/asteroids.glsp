@@ -32,6 +32,11 @@
     (let [x y] other-vec)
     (inc! @x x)
     (inc! @y y))
+
+  (met sub-vec (other-vec : (is? other-vec Vec2))
+    (let [x y] other-vec)
+    (dec! @x x)
+    (dec! @y y))
   
   (met length ()
     (let xx (pow @x 2))
@@ -161,9 +166,11 @@
 (defclass Bullet
   (const speed 7.0)
   (const lifetime 1.5)
+
   (field pos)
   (field vel)
   (field shot-at)
+  (field collided #f)
 
   (init (@pos @vel @shot-at))
 
@@ -185,6 +192,7 @@
   (field pos)
   (field rot)
   (field vel)
+  (field collided #f)
 
   (init (@pos @vel)
     (= @rot 0.0))
@@ -245,6 +253,7 @@ state hierarchy for Game is:
     (state* Waiting
       (wrap Main:update (dt, sst)
         (when (pressed? 'key:enter)
+          (@init-asteroids 10)
           (@enab! 'Playing)))
 
       (wrap Main:draw ()
@@ -254,12 +263,34 @@ state hierarchy for Game is:
         (draw-text "Press enter." (/ w 2.4) (/ h 2) font-size :white))),
     ; gameplay
     (state Playing
+      ; checks for collision and mark entities for deletion
+      (met physics ()
+        (for ast in @asteroids
+          ; player collision with asteroids
+          (let ast-pos (.copy [ast 'pos]))
+          (.sub-vec ast-pos [@player 'pos])
+          (when (< (.length ast-pos) (+ [ast 'size] (/ [@player 'vis-height] 3)))
+            (@enab! 'GameOver))
+
+          ; asteroid and bullet collision
+          (for bul in @bullets
+            (let ast-pos (.copy [ast 'pos]))
+            (.sub-vec ast-pos [bul 'pos])
+            (when (< (.length ast-pos) [ast 'size])
+              ; todo: create small asteroids
+              (= [ast 'collided] #t)
+              (= [bul 'collided] #t)),)))
+
       (wrap Main:update (dt, sst)
         ; kill all unrelevant entities
         (retain! (fn1 (.ranout? _ sst)) @bullets) ; _ is a bullet, just check fn1 in reference
+        (retain! (fn1 (eq? [_ 'collided] #f)) @asteroids)
+        (retain! (fn1 (eq? [_ 'collided] #f)) @bullets)
 
-        (@enab! 'GameOver)
         ; yielding spawn for asteroids
+
+        ; process physics (collisions)
+        (@physics)
 
         ; if len of asteroids is getting smaller spawn new incoming from screen sides
         (when (< (len @asteroids) 10)
