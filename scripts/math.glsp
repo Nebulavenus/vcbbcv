@@ -1,0 +1,50 @@
+(defclass Vec2
+  (field x)
+  (field y)
+
+  (init (@x @y))
+
+  (const zero (fn0 (Vec2 0.0 0.0)))
+
+  (met copy ()
+    (Vec2 @x @y))
+
+  ; examine macroses to overload + for vec2
+  (met add-val (val : num?)
+    (inc! @x val)
+    (inc! @y val))
+
+  (met mul-val (val : num?)
+    (mul! @x val)
+    (mul! @y val))
+
+  (met div-val (val : num?)
+    (div! @x val)
+    (div! @y val))
+
+  (met add-vec (other-vec : (is? other-vec Vec2))
+    (let [x y] other-vec)
+    (inc! @x x)
+    (inc! @y y))
+
+  (met sub-vec (other-vec : (is? other-vec Vec2))
+    (let [x y] other-vec)
+    (dec! @x x)
+    (dec! @y y))
+  
+  (met length ()
+    (let xx (pow @x 2))
+    (let yy (pow @y 2))
+    (sqrt (+ xx yy)))
+  
+  (met normalize ()
+    (let l (.length @self))
+    (div! @x l)
+    (div! @y l))
+  
+  (met neg ()
+    (neg! @x)
+    (neg! @y))
+
+  (met split ()
+    (arr @x @y)))

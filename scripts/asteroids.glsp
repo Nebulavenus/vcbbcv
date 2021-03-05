@@ -4,57 +4,6 @@
 (let :green '(0, 255, 0, 255))
 (let :yellow '(255, 255, 0, 255))
 
-(defclass Vec2
-  (field x)
-  (field y)
-
-  (init (@x @y))
-
-  (const zero (fn0 (Vec2 0.0 0.0)))
-
-  (met copy ()
-    (Vec2 @x @y))
-
-  ; examine macroses to overload + for vec2
-  (met add-val (val : num?)
-    (inc! @x val)
-    (inc! @y val))
-
-  (met mul-val (val : num?)
-    (mul! @x val)
-    (mul! @y val))
-
-  (met div-val (val : num?)
-    (div! @x val)
-    (div! @y val))
-
-  (met add-vec (other-vec : (is? other-vec Vec2))
-    (let [x y] other-vec)
-    (inc! @x x)
-    (inc! @y y))
-
-  (met sub-vec (other-vec : (is? other-vec Vec2))
-    (let [x y] other-vec)
-    (dec! @x x)
-    (dec! @y y))
-  
-  (met length ()
-    (let xx (pow @x 2))
-    (let yy (pow @y 2))
-    (sqrt (+ xx yy)))
-  
-  (met normalize ()
-    (let l (.length @self))
-    (div! @x l)
-    (div! @y l))
-  
-  (met neg ()
-    (neg! @x)
-    (neg! @y))
-
-  (met split ()
-    (arr @x @y)))
-
 (defn wrap-around (vec : (is? vec Vec2)) ; todo: check for i32 or f32 in vec
   (let vr (.copy vec))
   (let (width height) (screen-size)) ; (f32 f32) returned
@@ -72,7 +21,6 @@
 (defclass Ship
   (const vis-height 28.0)
   (const vis-base 18.0)
-  (const mov-speed 10.0)
   (const rot-speed 5.0)
 
   (field pos)
@@ -93,7 +41,6 @@
     (= @vel (.zero Vec2))
     (= @last-shot 0.0))
 
-  ; passed dt and game variables are probably redundant and I should just use globals?
   (met update (dt, sst, game) ; delta time = dt, since start time = sst
     ; handle acceleration input & logic
     (let acc (.copy @vel))
@@ -261,11 +208,13 @@ state hierarchy for Game is:
         (let (w h) (screen-size))
         (draw-text "Best game ever!" (/ w 2.5) (/ h 2.2) font-size :white)
         (draw-text "Press enter." (/ w 2.4) (/ h 2) font-size :white))),
+
     ; gameplay
     (state Playing
       ; checks for collision and mark entities for deletion
-      (met physics ()
-        (for ast in @asteroids
+      ; also marks destructable asteroids
+      (met physics (marked-asteroids)
+        (for (idx ast) in (enumerate @asteroids)
           ; player collision with asteroids
           (let ast-pos (.copy [ast 'pos]))
           (.sub-vec ast-pos [@player 'pos])
@@ -277,20 +226,49 @@ state hierarchy for Game is:
             (let ast-pos (.copy [ast 'pos]))
             (.sub-vec ast-pos [bul 'pos])
             (when (< (.length ast-pos) [ast 'size])
-              ; todo: create small asteroids
+              ; mark destructable asteroids
+              (when (> [ast 'sides] 4)
+                (dbg idx)
+                (push! marked-asteroids idx))
+              ; set collided to true
               (= [ast 'collided] #t)
-              (= [bul 'collided] #t)),)))
+              (= [bul 'collided] #t))
+              ; stop loop
+              (break)),))
 
       (wrap Main:update (dt, sst)
+        ; process physics (collisions)
+        (let marked-asteroids (arr))
+        (@physics marked-asteroids)
+
+        ; create small asteroids at marked destructable asteroids
+        (let new-asteroids (arr))
+        (for midx in marked-asteroids
+          (dbg midx)
+          (let ast [@asteroids midx])
+          (let new-size (* [ast 'size] 0.8))
+          (let new-sides (- [ast 'sides] 1))
+          (let first (clone ast))
+          (let second (clone ast))
+          (= [first 'size] new-size)
+          (= [first 'sides] new-sides)
+          (= [first 'collided] #f)
+          (= [second 'sides] new-sides)
+          (= [second 'size] new-size)
+          (= [second 'collided] #f)
+          (push! new-asteroids first)
+          (push! new-asteroids second))
+
         ; kill all unrelevant entities
         (retain! (fn1 (.ranout? _ sst)) @bullets) ; _ is a bullet, just check fn1 in reference
-        (retain! (fn1 (eq? [_ 'collided] #f)) @asteroids)
         (retain! (fn1 (eq? [_ 'collided] #f)) @bullets)
+        (retain! (fn1 (eq? [_ 'collided] #f)) @asteroids)
+
+        ; after the old asteroid and bullet killed spawn new smaller asteroids
+        (for ast in new-asteroids
+          (push! @asteroids ast))
 
         ; yielding spawn for asteroids
-
-        ; process physics (collisions)
-        (@physics)
 
         ; if len of asteroids is getting smaller spawn new incoming from screen sides
         (when (< (len @asteroids) 10)
@@ -318,6 +296,7 @@ state hierarchy for Game is:
           
         ; draw player
         (.draw @player))),
+
     ; score screen
     (state GameOver
       (const s-to-skip 1.0)

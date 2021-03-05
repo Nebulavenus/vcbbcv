@@ -120,7 +120,7 @@ impl IntoVal for GlspKeyCode {
         };
 
         if sym == sym!("unknown") {
-            return bail!("unsupported keycode for now");
+            unimplemented!("Unsupported keycode!");
         }
 
         sym.into_val()
@@ -169,7 +169,7 @@ impl FromVal for GlspKeyCode {
             Val::Sym(s) if s == sym!("key:z") => GlspKeyCode(KeyCode::Z),
             Val::Sym(s) if s == sym!("key:escape") => GlspKeyCode(KeyCode::Escape),
             Val::Sym(s) if s == sym!("key:enter") => GlspKeyCode(KeyCode::Enter),
-            Val::Sym(s) if s == sym!("key:tab") => GlspKeyCode(KeyCode::Enter),
+            Val::Sym(s) if s == sym!("key:tab") => GlspKeyCode(KeyCode::Tab),
             Val::Sym(s) if s == sym!("key:right") => GlspKeyCode(KeyCode::Right),
             Val::Sym(s) if s == sym!("key:left") => GlspKeyCode(KeyCode::Left),
             Val::Sym(s) if s == sym!("key:down") => GlspKeyCode(KeyCode::Down),
@@ -243,6 +243,7 @@ async fn main() {
         glsp::bind_rfn("pressed?", &is_key_pressed_wrapper)?;
 
         // Load scripts
+        glsp::load("scripts/math.glsp")?;
         glsp::load("scripts/asteroids.glsp")?;
 
         Ok(())
