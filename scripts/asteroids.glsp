@@ -141,8 +141,12 @@
   (field vel)
   (field collided #f)
 
-  (init (@pos @vel)
-    (= @rot 0.0))
+  (init (@pos @vel (? size) (? sides))
+    (= @rot 0.0)
+    (unless (eq? size #n)
+      (= @size size))
+    (unless (eq? sides #n)
+      (= @sides sides)))
 
   (met update (dt)
     (inc! @rot @rot-speed)
@@ -201,7 +205,8 @@ state hierarchy for Game is:
       (wrap Main:update (dt, sst)
         (when (pressed? 'key:enter)
           (@init-asteroids 10)
-          (@enab! 'Playing)))
+          (@enab! 'Playing)
+          (return)))
 
       (wrap Main:draw ()
         (let font-size 30.0)
@@ -219,22 +224,21 @@ state hierarchy for Game is:
           (let ast-pos (.copy [ast 'pos]))
           (.sub-vec ast-pos [@player 'pos])
           (when (< (.length ast-pos) (+ [ast 'size] (/ [@player 'vis-height] 3)))
-            (@enab! 'GameOver))
+            (@enab! 'GameOver)
+            (return)) ; after enabling another state return from fn to stop execution and prevent crash
 
           ; asteroid and bullet collision
           (for bul in @bullets
             (let ast-pos (.copy [ast 'pos]))
             (.sub-vec ast-pos [bul 'pos])
             (when (< (.length ast-pos) [ast 'size])
+              (dbg (.length ast-pos))
               ; mark destructable asteroids
               (when (> [ast 'sides] 4)
-                (dbg idx)
                 (push! marked-asteroids idx))
               ; set collided to true
               (= [ast 'collided] #t)
-              (= [bul 'collided] #t))
-              ; stop loop
-              (break)),))
+              (= [bul 'collided] #t))),))
 
       (wrap Main:update (dt, sst)
         ; process physics (collisions)
@@ -244,18 +248,24 @@ state hierarchy for Game is:
         ; create small asteroids at marked destructable asteroids
         (let new-asteroids (arr))
         (for midx in marked-asteroids
-          (dbg midx)
           (let ast [@asteroids midx])
           (let new-size (* [ast 'size] 0.8))
+          (let new-pos1 (.copy [ast 'pos]))
+          (.add-val new-pos1 (/ new-size 2.0))
+          (dbg [new-pos1 'x] [new-pos1 'y])
+          (let new-pos2 (.copy [ast 'pos]))
+          (.add-val new-pos2 (- (/ new-size 2.0)))
+          (dbg [new-pos2 'x] [new-pos2 'y])
           (let new-sides (- [ast 'sides] 1))
-          (let first (clone ast))
-          (let second (clone ast))
-          (= [first 'size] new-size)
-          (= [first 'sides] new-sides)
-          (= [first 'collided] #f)
-          (= [second 'sides] new-sides)
-          (= [second 'size] new-size)
-          (= [second 'collided] #f)
+          (let new-vel1 (.copy [ast 'vel]))
+          (mul! [new-vel1 'x] (rand-pick 1 -1))
+          (mul! [new-vel1 'y] (rand-pick 1 -1))
+          (let new-vel2 (.copy [ast 'vel]))
+          (mul! [new-vel2 'x] (rand-pick 1 -1))
+          (mul! [new-vel2 'y] (rand-pick 1 -1))
+
+          (let first (Asteroid new-pos1 new-vel1 new-size new-sides))
+          (let second (Asteroid new-pos2 new-vel2 new-size new-sides))
           (push! new-asteroids first)
           (push! new-asteroids second))
 
@@ -309,7 +319,7 @@ state hierarchy for Game is:
           (when (any? pressed? '(key:enter key:up key:down key:right key:left))
             (@reset)
             (@enab! 'Waiting)
-            (return)),))
+            (return))))
 
       (wrap Main:draw ()
         (let font-size 30.0)
