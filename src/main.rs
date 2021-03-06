@@ -48,9 +48,9 @@ fn draw_text_wrapper(
     x: f32,
     y: f32,
     font_size: f32,
-    color: (u8, u8, u8, u8),
+    color: [u8; 4],
 ) -> GResult<()> {
-    let c = color_u8!(color.0, color.1, color.2, color.3);
+    let c = color_u8!(color[0], color[1], color[2], color[3]);
     draw_text(text, x, y, font_size, c);
     Ok(())
 }
@@ -63,6 +63,18 @@ impl IntoVal for GlspKeyCode {
     fn into_val(self) -> GResult<Val> {
         let sym = match self.0 {
             KeyCode::Space => sym!("key:space"),
+            KeyCode::F1 => sym!("key:f1"),
+            KeyCode::F2 => sym!("key:f2"),
+            KeyCode::F3 => sym!("key:f3"),
+            KeyCode::F4 => sym!("key:f4"),
+            KeyCode::F5 => sym!("key:f5"),
+            KeyCode::F6 => sym!("key:f6"),
+            KeyCode::F7 => sym!("key:f7"),
+            KeyCode::F8 => sym!("key:f8"),
+            KeyCode::F9 => sym!("key:f9"),
+            KeyCode::F10 => sym!("key:f10"),
+            KeyCode::F11 => sym!("key:f11"),
+            KeyCode::F12 => sym!("key:f12"),
             KeyCode::Key0 => sym!("key:0"),
             KeyCode::Key1 => sym!("key:1"),
             KeyCode::Key2 => sym!("key:2"),
@@ -131,6 +143,18 @@ impl FromVal for GlspKeyCode {
     fn from_val(val: &Val) -> GResult<Self> {
         Ok(match *val {
             Val::Sym(s) if s == sym!("key:space") => GlspKeyCode(KeyCode::Space),
+            Val::Sym(s) if s == sym!("key:f1") => GlspKeyCode(KeyCode::F1),
+            Val::Sym(s) if s == sym!("key:f2") => GlspKeyCode(KeyCode::F2),
+            Val::Sym(s) if s == sym!("key:f3") => GlspKeyCode(KeyCode::F3),
+            Val::Sym(s) if s == sym!("key:f4") => GlspKeyCode(KeyCode::F4),
+            Val::Sym(s) if s == sym!("key:f5") => GlspKeyCode(KeyCode::F5),
+            Val::Sym(s) if s == sym!("key:f6") => GlspKeyCode(KeyCode::F6),
+            Val::Sym(s) if s == sym!("key:f7") => GlspKeyCode(KeyCode::F7),
+            Val::Sym(s) if s == sym!("key:f8") => GlspKeyCode(KeyCode::F8),
+            Val::Sym(s) if s == sym!("key:f9") => GlspKeyCode(KeyCode::F9),
+            Val::Sym(s) if s == sym!("key:f10") => GlspKeyCode(KeyCode::F10),
+            Val::Sym(s) if s == sym!("key:f11") => GlspKeyCode(KeyCode::F11),
+            Val::Sym(s) if s == sym!("key:f12") => GlspKeyCode(KeyCode::F12),
             Val::Sym(s) if s == sym!("key:0") => GlspKeyCode(KeyCode::Key0),
             Val::Sym(s) if s == sym!("key:1") => GlspKeyCode(KeyCode::Key1),
             Val::Sym(s) if s == sym!("key:2") => GlspKeyCode(KeyCode::Key2),
@@ -226,6 +250,11 @@ async fn main() {
     // Scripting
     let runtime = Runtime::new();
 
+    let math_file = macroquad::file::load_string("scripts/math.glsp").await.unwrap();
+    let asteroids_file = macroquad::file::load_string("scripts/asteroids.glsp").await.unwrap();
+    let basic_file = macroquad::file::load_string("scripts/basic.glsp").await.unwrap();
+    let main_file = macroquad::file::load_string("scripts/main.glsp").await.unwrap();
+
     runtime.run(|| {
         // Bind window specific functions
         glsp::bind_rfn("screen-size", &screen_size_wrapper)?;
@@ -243,8 +272,12 @@ async fn main() {
         glsp::bind_rfn("pressed?", &is_key_pressed_wrapper)?;
 
         // Load scripts
-        glsp::load("scripts/math.glsp")?;
-        glsp::load("scripts/asteroids.glsp")?;
+        //glsp::load("scripts/math.glsp")?;
+        //glsp::load("scripts/asteroids.glsp")?;
+        glsp::load_str(math_file.as_str())?;
+        glsp::load_str(basic_file.as_str())?;
+        glsp::load_str(asteroids_file.as_str())?;
+        glsp::load_str(main_file.as_str())?;
 
         Ok(())
     });

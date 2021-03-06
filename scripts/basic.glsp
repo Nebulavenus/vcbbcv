@@ -17,53 +17,60 @@
   (met draw (color)
     (draw-circle @x @y @r color)))
 
-(def first-circle (Circle
-  (x 10.0)
-  (y 10.0)
-  (s 50.0)
-  (r 30.0)))
+(defclass BasicGame
+  (field first-circle)
+  (field player-circle)
+  (field player-color :white)
 
-(def player-color :white)
-(def player-circle (Circle
-  (x 90.0)
-  (y 90.0)
-  (s 50.0)
-  (r 30.0)))
+  (init ()
+    (@reset))
 
-(defn engine:update (dt)
-  ; just move first circle
-  (let speed [first-circle 's])
-  (inc! [first-circle 'x] (* dt speed))
-  (inc! [first-circle 'y] (* dt speed))
+  (met reset ()
+    (= @first-circle (Circle
+      (x 10.0)
+      (y 10.0)
+      (s 50.0)
+      (r 30.0)))
+    (= @player-circle (Circle
+      (x 90.0)
+      (y 90.0)
+      (s 50.0)
+      (r 30.0))))
 
-  ; check for overlapping and change color
-  (cond
-    ((.overlaps? first-circle player-circle)
-      (= player-color :yellow)) ; overlapped
-    (else
-      (= player-color :white))) ; not
+  (met update (dt, sst)
+    ; just move first circle
+    (let speed [@first-circle 's])
+    (inc! [@first-circle 'x] (* dt speed))
+    (inc! [@first-circle 'y] (* dt speed))
 
-  ; move player position based on input
-  (let speed [player-circle 's])
-  (when (down? 'key:up)
-    (dec! [player-circle 'y] (* dt speed)))
-  (when (down? 'key:down)
-    (inc! [player-circle 'y] (* dt speed)))
-  (when (down? 'key:right)
-    (inc! [player-circle 'x] (* dt speed)))
-  (when (down? 'key:left)
-    (dec! [player-circle 'x] (* dt speed)))
+    ; check for overlapping and change color
+    (cond
+      ((.overlaps? @first-circle @player-circle)
+        (= @player-color :yellow)) ; overlapped
+      (else
+        (= @player-color :white))) ; not
 
-  ; change radius based on input
-  (when (pressed? 'key:f)
-    (inc! [player-circle 'r] 1.0))
-  (when (pressed? 'key:r)
-    (dec! [player-circle 'r] 1.0)))
+    ; move player position based on input
+    (let speed [@player-circle 's])
+    (when (down? 'key:up)
+      (dec! [@player-circle 'y] (* dt speed)))
+    (when (down? 'key:down)
+      (inc! [@player-circle 'y] (* dt speed)))
+    (when (down? 'key:right)
+      (inc! [@player-circle 'x] (* dt speed)))
+    (when (down? 'key:left)
+      (dec! [@player-circle 'x] (* dt speed)))
 
-(defn engine:draw ()
-  (clear-background :black)
+    ; change radius based on input
+    (when (down? 'key:f)
+      (inc! [@player-circle 'r] 1.0))
+    (when (down? 'key:r)
+      (dec! [@player-circle 'r] 1.0)))
 
-  (.draw player-circle player-color)
-  (.draw first-circle :green)
+  (met draw ()
+    (clear-background :black)
 
-  (draw-text "Hi" 30.0 30.0 30.0 :white))
+    (.draw @player-circle @player-color)
+    (.draw @first-circle :green)
+
+    (draw-text "Hi" 30.0 30.0 30.0 :white)),)

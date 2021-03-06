@@ -1,0 +1,54 @@
+(let :black '(0, 0, 0, 255))
+(let :white '(255, 255, 255, 255))
+
+(defclass Example
+
+  (met update (dt sst)
+    (when (and (pressed? 'key:f1) (not (@enab? 'Basic)))
+      (@enab! 'Basic)
+      (return))
+    (when (and (pressed? 'key:f2) (not (@enab? 'Asteroids)))
+      (@enab! 'Asteroids)
+      (return)))
+
+  (met draw ()
+    (clear-background :black)
+    (draw-text "F1: Basic" 30.0 30.0 30.0 :white)
+    (draw-text "F2: Asteroids" 30.0 60.0 30.0 :white))
+
+  (fsm
+    (state Basic
+      (field basic-game)
+
+      (init-state ()
+        (= @basic-game (BasicGame)))
+      
+      (wrap Main:update (dt sst)
+        (@base dt sst)
+        (.update @basic-game dt sst))
+
+      (wrap Main:draw ()
+        ;(@base)
+        (.draw @basic-game))),
+    (state Asteroids
+      (field asteroids-game)
+
+      (init-state ()
+        (= @asteroids-game (AsteroidsGame)))
+
+      (wrap Main:update (dt sst)
+        (@base dt sst)
+        (.update @asteroids-game dt sst))
+
+      (wrap Main:draw ()
+        ;(@base)
+        (.draw @asteroids-game))),))
+
+(let example (Example))
+
+(defn engine:update (dt)
+  (let sst (get-time)) ; time since start
+  (.update example dt sst))
+
+(defn engine:draw ()
+  (.draw example))

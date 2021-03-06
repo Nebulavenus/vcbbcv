@@ -164,7 +164,7 @@ state hierarchy for Game is:
     (state GameOver)) ; score screen
 |#
 
-(defclass Game
+(defclass AsteroidsGame
   (field player)
   (field bullets)
   (field asteroids) ; array of asteroid class
@@ -336,13 +336,3 @@ state hierarchy for Game is:
         (when (>= @timer @s-to-skip)
           (draw-text "Press any key." (/ w 2.4) (/ h 2) font-size :white))
         (return))),))
-
-(def game (Game))
-
-(defn engine:update (dt)
-  (let sst (get-time)) ; time since start
-  (.update game dt sst))
-
-(defn engine:draw ()
-  (clear-background :black)
-  (.draw game))
