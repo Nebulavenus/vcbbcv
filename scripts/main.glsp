@@ -22,6 +22,9 @@
 
       (init-state ()
         (= @basic-game (BasicGame)))
+
+      (fini-state ()
+        (set-default-camera))
       
       (wrap Main:update (dt sst)
         (@base dt sst)
@@ -36,13 +39,32 @@
       (init-state ()
         (= @asteroids-game (AsteroidsGame)))
 
+      (fini-state ()
+        (set-default-camera))
+
       (wrap Main:update (dt sst)
         (@base dt sst)
         (.update @asteroids-game dt sst))
 
       (wrap Main:draw ()
         ;(@base)
-        (.draw @asteroids-game))),))
+        (.draw @asteroids-game))),
+    (state* Arkanoid
+      (field arkanoid-game)
+
+      (init-state ()
+        (= @arkanoid-game (ArkanoidGame)))
+      
+      (fini-state ()
+        (set-default-camera))
+
+      (wrap Main:update (dt sst)
+        (@base dt sst)
+        (.update @arkanoid-game dt sst))
+
+      (wrap Main:draw ()
+        ;(@base)
+        (.draw @arkanoid-game))),))
 
 (let example (Example))
 

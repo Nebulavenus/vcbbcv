@@ -17,6 +17,12 @@ fn draw_circle_wrapper(x: f32, y: f32, r: f32, color: [u8; 4]) -> GResult<()> {
     Ok(())
 }
 
+fn draw_rectangle_wrapper(x: f32, y: f32, w: f32, h: f32, color: [u8; 4]) -> GResult<()> {
+    let c = color_u8!(color[0], color[1], color[2], color[3]);
+    draw_rectangle(x, y, w, h, c);
+    Ok(())
+}
+
 fn draw_triangle_lines_wrapper(
     v1: [f32; 2],
     v2: [f32; 2],
@@ -43,13 +49,7 @@ fn draw_poly_lines_wrapper(
     Ok(())
 }
 
-fn draw_text_wrapper(
-    text: &str,
-    x: f32,
-    y: f32,
-    font_size: f32,
-    color: [u8; 4],
-) -> GResult<()> {
+fn draw_text_wrapper(text: &str, x: f32, y: f32, font_size: f32, color: [u8; 4]) -> GResult<()> {
     let c = color_u8!(color[0], color[1], color[2], color[3]);
     draw_text(text, x, y, font_size, c);
     Ok(())
@@ -233,6 +233,58 @@ fn get_time_wrapper() -> GResult<f32> {
     Ok(get_time() as f32)
 }
 
+// camera
+
+struct GlspCamera2D(macroquad::camera::Camera2D);
+
+impl GlspCamera2D {
+    fn new() -> Self {
+        GlspCamera2D(macroquad::camera::Camera2D {
+            ..Default::default()
+        })
+    }
+
+    fn get_rotation(&self) -> f32 {
+        self.0.rotation
+    }
+
+    fn set_rotation(&mut self, rotation: f32) {
+        self.0.rotation = rotation;
+    }
+
+    fn get_zoom(&self) -> (f32, f32) {
+        let v = self.0.zoom;
+        (v.x, v.y)
+    }
+
+    fn set_zoom(&mut self, zoom: [f32; 2]) {
+        self.0.zoom = vec2(zoom[0], zoom[1]);
+    }
+
+    fn get_target(&self) -> (f32, f32) {
+        let v = self.0.target;
+        (v.x, v.y)
+    }
+
+    fn set_target(&mut self, target: [f32; 2]) {
+        self.0.target = vec2(target[0], target[1]);
+    }
+
+    fn get_offset(&self) -> (f32, f32) {
+        let v = self.0.offset;
+        (v.x, v.y)
+    }
+
+    fn set_offset(&mut self, offset: [f32; 2]) {
+        self.0.offset = vec2(offset[0], offset[1]);
+    }
+}
+
+fn set_camera_wrapper(camera: &GlspCamera2D) -> GResult<()> {
+    set_camera(camera.0);
+    Ok(())
+}
+
 fn window_conf() -> Conf {
     Conf {
         window_title: "Something".to_owned(),
@@ -250,10 +302,21 @@ async fn main() {
     // Scripting
     let runtime = Runtime::new();
 
-    let math_file = macroquad::file::load_string("scripts/math.glsp").await.unwrap();
-    let asteroids_file = macroquad::file::load_string("scripts/asteroids.glsp").await.unwrap();
-    let basic_file = macroquad::file::load_string("scripts/basic.glsp").await.unwrap();
-    let main_file = macroquad::file::load_string("scripts/main.glsp").await.unwrap();
+    let math_file = macroquad::file::load_string("scripts/math.glsp")
+        .await
+        .unwrap();
+    let asteroids_file = macroquad::file::load_string("scripts/asteroids.glsp")
+        .await
+        .unwrap();
+    let basic_file = macroquad::file::load_string("scripts/basic.glsp")
+        .await
+        .unwrap();
+    let arkanoid_file = macroquad::file::load_string("scripts/arkanoid.glsp")
+        .await
+        .unwrap();
+    let main_file = macroquad::file::load_string("scripts/main.glsp")
+        .await
+        .unwrap();
 
     runtime.run(|| {
         // Bind window specific functions
@@ -263,6 +326,7 @@ async fn main() {
         // Bind draw functions
         glsp::bind_rfn("clear-background", &clear_background_wrapper)?;
         glsp::bind_rfn("draw-circle", &draw_circle_wrapper)?;
+        glsp::bind_rfn("draw-rectangle", &draw_rectangle_wrapper)?;
         glsp::bind_rfn("draw-poly-lines", &draw_poly_lines_wrapper)?;
         glsp::bind_rfn("draw-triangle-lines", &draw_triangle_lines_wrapper)?;
         glsp::bind_rfn("draw-text", &draw_text_wrapper)?;
@@ -271,12 +335,30 @@ async fn main() {
         glsp::bind_rfn("down?", &is_key_down_wrapper)?;
         glsp::bind_rfn("pressed?", &is_key_pressed_wrapper)?;
 
+        // Bind camera and functions
+        RClassBuilder::<GlspCamera2D>::new()
+            .name("Camera2D")
+            .prop_get("rotation", &GlspCamera2D::get_rotation)
+            .prop_set("rotation", &GlspCamera2D::set_rotation)
+            .prop_get("zoom", &GlspCamera2D::get_zoom)
+            .prop_set("zoom", &GlspCamera2D::set_zoom)
+            .prop_get("target", &GlspCamera2D::get_target)
+            .prop_set("target", &GlspCamera2D::set_target)
+            .prop_get("offset", &GlspCamera2D::get_offset)
+            .prop_set("offset", &GlspCamera2D::set_offset)
+            .build();
+        glsp::bind_rfn("Camera2D", &GlspCamera2D::new)?;
+
+        glsp::bind_rfn("set-camera", &set_camera_wrapper)?;
+        glsp::bind_rfn("set-default-camera", &set_default_camera)?;
+
         // Load scripts
         //glsp::load("scripts/math.glsp")?;
         //glsp::load("scripts/asteroids.glsp")?;
         glsp::load_str(math_file.as_str())?;
         glsp::load_str(basic_file.as_str())?;
         glsp::load_str(asteroids_file.as_str())?;
+        glsp::load_str(arkanoid_file.as_str())?;
         glsp::load_str(main_file.as_str())?;
 
         Ok(())

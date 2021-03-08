@@ -1,0 +1,145 @@
+(let :red '(255, 0, 0, 255))
+(let :black '(0, 0, 0, 255))
+(let :white '(255, 255, 255, 255))
+(let :green '(0, 255, 0, 255))
+(let :yellow '(255, 255, 0, 255))
+
+(defclass Block
+  (const width 10)
+  (const height 10)
+
+  (field pos)
+;  (field collided #f)
+
+  (init (@pos))
+
+  )
+
+(defclass Platform
+  (const width 100.0)
+  (const height 20.0)
+  (const speed 500.0)
+
+  (field pos)
+
+  (init ()
+    (let x (/ [ArkanoidGame 'width] 2.0))
+    (let y [ArkanoidGame 'height])
+    (= @pos (Vec2 x y)))
+
+  (met update (dt, sst)
+    (let (sw sh) (arr [ArkanoidGame 'width] [ArkanoidGame 'height]))
+    (when (down? 'key:right)
+      (inc! [@pos 'x] (* @speed dt)))
+    (when (down? 'key:left)
+      (dec! [@pos 'x] (* @speed dt)))
+
+    (when (> [@pos 'x] (- sw @width))
+      (= [@pos 'x] (- sw @width)))
+    (when (< [@pos 'x] 0.0)
+      (= [@pos 'x] 0.0)))
+
+  (met draw ()
+    (draw-rectangle [@pos 'x] [@pos 'y] @width @height :green)))
+
+(defclass Ball
+  (const rad 10.0)
+  (field pos)
+  (field vel)
+  (field stick #t)
+  (field lose #f)
+
+  (init ()
+    (= @pos (.zero Vec2))
+    (= @vel (.zero Vec2)))
+
+  (met sticked? ()
+    (eq? @stick #t))
+
+  (met lost? ()
+    (eq? @lose #t))
+
+  (met update (dt, sst)
+    (when (eq? @stick #f)
+      (.add-vec! @pos @vel))
+    
+    ; check for borders
+    (let offset [ArkanoidGame 'boffset])
+    (when (< [@pos 'x] (+ 0.0 (* offset 2.0))) ; left
+      (neg! [@vel 'x]))
+    (when (> [@pos 'x] (- [ArkanoidGame 'width] (* offset 2.0))) ; right
+      (neg! [@vel 'x]))
+    (when (< [@pos 'y] (+ 0.0 (* offset 2.0))) ; top
+      (neg! [@vel 'y]))
+    (when (> [@pos 'y] (- [ArkanoidGame 'height] (* offset 2.0))) ; bottom
+      (= @lose #t)))
+
+  (met draw ()
+    (let (x y) (.split @pos))
+    (draw-circle x y @rad :red)))
+
+(defclass ArkanoidGame
+  (const boffset 5.0)
+  (const width 400.0)
+  (const height 400.0)
+
+  (field ball)
+  (field platform)
+
+  (init ()
+    (@reset))
+
+  (met reset ()
+    ; setup cam
+    (let cam (Camera2D))
+    (let scale 0.8)
+    (let zoom (Vec2 (/ 1.0 (* @width scale)) (- (/ 1.0 (* @height scale)))))
+    (let target (Vec2 (/ @width 2.0) (/ @height 2.0)))
+    (= [cam 'zoom] (.split zoom))
+    (= [cam 'target] (.split target))
+    (set-camera cam)
+
+    ; setup platform
+    (= @platform (Platform))
+    
+    ; setup ball
+    (= @ball (Ball)))
+
+  (met update (dt, sst)
+    (.update @platform dt sst)
+    (.update @ball dt sst)
+
+    ; snap ball to platform
+    (when (.sticked? @ball)
+      (let [(x px) (y py)] [@platform 'pos])
+      (let ph [Platform 'height])
+      (let pw (/ [Platform 'width] 2.0))
+      (let ball-pos (Vec2 (+ px pw) (- py [Ball 'rad])))
+      (= [@ball 'pos] ball-pos))
+
+    ; on space unsnap it and let move
+    (when (and (pressed? 'key:space) (.sticked? @ball))
+      (let dir (Vec2 (rand -1.0 1.0) -1.0))
+      (.mul-val! dir 5.0)
+      (= [@ball 'vel] dir)
+      (= [@ball 'stick] #f))
+
+    ; check for lose
+    (when (.lost? @ball)
+      (= [@ball 'stick] #t)
+      (= [@ball 'lose] #f)))
+
+  (met draw ()
+    (clear-background :black)
+
+    ; borders
+    (draw-rectangle 0.0 0.0 @width @height :yellow)
+    (draw-rectangle @boffset @boffset (- @width (* @boffset 2.0)) (- @height (* @boffset 2.0)) :black)
+
+    ; platform
+    (.draw @platform)
+
+    ; ball
+    (.draw @ball)
+
+    (draw-text "Hi" 30.0 30.0 30.0 :white)),)
