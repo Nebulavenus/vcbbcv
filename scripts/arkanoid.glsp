@@ -3,21 +3,31 @@
 (let :white '(255, 255, 255, 255))
 (let :green '(0, 255, 0, 255))
 (let :yellow '(255, 255, 0, 255))
+(let :blue '(0, 0, 255, 255))
 
 (defclass Block
-  (const width 10)
-  (const height 10)
+  (const width 20.0)
+  (const height 10.0)
 
   (field pos)
-;  (field collided #f)
 
   (init (@pos))
 
-  )
+  (met ball-collided? (ball : (is? ball Ball))
+    (let [(x bx) (y by)] [ball 'pos])
+    (let [(x px) (y py)] @pos)
+    (cond 
+      ((and (<= bx (+ px @width)) (>= bx px) (>= by py) (<= by (+ py @height))) #t)
+      (else #f)),)
+
+  (met update (dt, sst))
+
+  (met draw ()
+    (draw-rectangle [@pos 'x] [@pos 'y] @width @height :blue)))
 
 (defclass Platform
-  (const width 100.0)
-  (const height 20.0)
+  (const width 60.0)
+  (const height 10.0)
   (const speed 500.0)
 
   (field pos)
@@ -26,6 +36,13 @@
     (let x (/ [ArkanoidGame 'width] 2.0))
     (let y [ArkanoidGame 'height])
     (= @pos (Vec2 x y)))
+
+  (met ball-collided? (ball : (is? ball Ball))
+    (let [(x bx) (y by)] [ball 'pos])
+    (let [(x px) (y py)] @pos)
+    (cond 
+      ((and (<= bx (+ px @width)) (>= bx px) (>= by py)) #t)
+      (else #f)),)
 
   (met update (dt, sst)
     (let (sw sh) (arr [ArkanoidGame 'width] [ArkanoidGame 'height]))
@@ -43,7 +60,7 @@
     (draw-rectangle [@pos 'x] [@pos 'y] @width @height :green)))
 
 (defclass Ball
-  (const rad 10.0)
+  (const rad 7.0)
   (field pos)
   (field vel)
   (field stick #t)
@@ -71,7 +88,7 @@
       (neg! [@vel 'x]))
     (when (< [@pos 'y] (+ 0.0 (* offset 2.0))) ; top
       (neg! [@vel 'y]))
-    (when (> [@pos 'y] (- [ArkanoidGame 'height] (* offset 2.0))) ; bottom
+    (when (> [@pos 'y] (+ [ArkanoidGame 'height] (* offset 2.0))) ; bottom
       (= @lose #t)))
 
   (met draw ()
@@ -83,27 +100,54 @@
   (const width 400.0)
   (const height 400.0)
 
+  (field score)
   (field ball)
   (field platform)
+  (field blocks)
 
   (init ()
     (@reset))
 
-  (met reset ()
-    ; setup cam
+  (met setup-ui-cam ()
+    (set-default-camera))
+
+  (met setup-game-cam ()
     (let cam (Camera2D))
     (let scale 0.8)
     (let zoom (Vec2 (/ 1.0 (* @width scale)) (- (/ 1.0 (* @height scale)))))
     (let target (Vec2 (/ @width 2.0) (/ @height 2.0)))
     (= [cam 'zoom] (.split zoom))
     (= [cam 'target] (.split target))
-    (set-camera cam)
+    (set-camera cam))
+
+  (met reset ()
+    ; setup score
+    (= @score 0)
 
     ; setup platform
     (= @platform (Platform))
     
     ; setup ball
-    (= @ball (Ball)))
+    (= @ball (Ball))
+    
+    ; setup blocks
+    (= @blocks (arr))
+    (let step-x (/ [Block 'width] 2))
+    (let max-x (/ (- @width step-x) (+ [Block 'width] step-x)))
+    (= max-x (round max-x))
+    (dbg max-x)
+
+    (let step-y (/ [Block 'height] 1.0))
+    (let max-y (/ (- (/ @height 2.0) step-y) (+ [Block 'height] step-y)))
+    (= max-y (round max-y))
+    (dbg max-y)
+    (forn (iy max-y)
+      (forn (ix max-x)
+        (let x (* ix (+ [Block 'width] step-x)))
+        (let y (* iy (+ [Block 'height] step-y)))
+        (let pos (Vec2 (+ x step-x) (+ y step-y)))
+        (let b (Block pos))
+        (push! @blocks b))),)
 
   (met update (dt, sst)
     (.update @platform dt sst)
@@ -124,6 +168,16 @@
       (= [@ball 'vel] dir)
       (= [@ball 'stick] #f))
 
+    ; collision ball and platform
+    (when (.ball-collided? @platform @ball) (neg! [[@ball 'vel] 'y]))
+
+    ; collision ball and blocks
+    (for (idx b) in (enumerate @blocks)
+      (when (.ball-collided? b @ball)
+        (neg! [[@ball 'vel] 'y])
+        (inc! @score)
+        (del! @blocks idx)))
+
     ; check for lose
     (when (.lost? @ball)
       (= [@ball 'stick] #t)
@@ -132,14 +186,23 @@
   (met draw ()
     (clear-background :black)
 
+    ; render game
+    (@setup-game-cam)
+
     ; borders
     (draw-rectangle 0.0 0.0 @width @height :yellow)
     (draw-rectangle @boffset @boffset (- @width (* @boffset 2.0)) (- @height (* @boffset 2.0)) :black)
+
+    ; blocks
+    (for b in @blocks
+      (.draw b))
 
     ; platform
     (.draw @platform)
 
     ; ball
     (.draw @ball)
-
-    (draw-text "Hi" 30.0 30.0 30.0 :white)),)
+    
+    ; render ui
+    (@setup-ui-cam)
+    (draw-text "Score: {@score}" 30.0 30.0 30.0 :white)),)
