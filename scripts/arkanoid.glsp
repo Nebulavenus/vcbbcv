@@ -5,6 +5,11 @@
 (let :yellow '(255, 255, 0, 255))
 (let :blue '(0, 0, 255, 255))
 
+(let-fn draw-text-centerx (text : str?, y : flo?, font-size : flo?)
+  (let (w h) (screen-size))
+  (let td (measure-text text (int font-size) 1.0))
+  (draw-text text (- (/ w 2) (/ [td 'width] 2)) y font-size :white))
+
 (defclass Block
   (const width 20.0)
   (const height 10.0)
@@ -170,8 +175,8 @@ state hierarchy for Game is:
       (wrap Main:draw ()
         (let font-size 30.0)
         (let (w h) (screen-size))
-        (draw-text "Arkanoid" (/ w 2) (/ h 2.2) font-size :white)
-        (draw-text "Press enter." (/ w 2) (/ h 2) font-size :white)),)
+        (draw-text-centerx "Arkanoid" (/ h 2.2) font-size)
+        (draw-text-centerx "Press enter." (/ h 2) font-size)),)
 
     (state Playing
       (wrap Main:update (dt, sst)
@@ -258,12 +263,13 @@ state hierarchy for Game is:
 
         ; lose if score is negativ
         (when (< @score 0)
-          (draw-text "You lose!" (/ w 2.4) (/ h 2) font-size :white))
+          (draw-text-centerx "You lose!" (/ h 2) font-size))
 
         ; win if no more blocks
         (when (== (len @blocks) 0)
-          (draw-text "You win!" (/ w 2.4) (/ h 2) font-size :white))
+          (draw-text-centerx "You win!" (/ h 2) font-size))
 
         (when (>= @timer @s-to-skip)
-          (draw-text "Press enter or space." (/ w 2.4) (/ h 1.5) font-size :white))
+          (draw-text-centerx "Press enter or space!" (/ h 1.5) font-size))
+
         (return)),),))

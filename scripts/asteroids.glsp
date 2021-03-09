@@ -4,7 +4,12 @@
 (let :green '(0, 255, 0, 255))
 (let :yellow '(255, 255, 0, 255))
 
-(defn wrap-around (vec : (is? vec Vec2)) ; todo: check for i32 or f32 in vec
+(let-fn draw-text-centerx (text : str?, y : flo?, font-size : flo?)
+  (let (w h) (screen-size))
+  (let td (measure-text text (int font-size) 1.0))
+  (draw-text text (- (/ w 2) (/ [td 'width] 2)) y font-size :white))
+
+(let-fn wrap-around (vec : (is? vec Vec2)) ; todo: check for i32 or f32 in vec
   (let vr (.copy vec))
   (let (width height) (screen-size)) ; (f32 f32) returned
   (cond
@@ -212,8 +217,8 @@ state hierarchy for Game is:
       (wrap Main:draw ()
         (let font-size 30.0)
         (let (w h) (screen-size))
-        (draw-text "Asteroids" (/ w 2.5) (/ h 2.2) font-size :white)
-        (draw-text "Press enter." (/ w 2.4) (/ h 2) font-size :white))),
+        (draw-text-centerx "Asteroids" (/ h 2.2) font-size)
+        (draw-text-centerx "Press enter." (/ h 2) font-size))),
 
     ; gameplay
     (state Playing
@@ -332,7 +337,7 @@ state hierarchy for Game is:
       (wrap Main:draw ()
         (let font-size 30.0)
         (let (w h) (screen-size))
-        (draw-text "Your score is: {@score}!" (/ w 2.5) (/ h 2.2) font-size :white)
+        (draw-text-centerx "Your score is: {@score}!" (/ h 2.2) font-size)
         (when (>= @timer @s-to-skip)
-          (draw-text "Press any key." (/ w 2.4) (/ h 2) font-size :white))
+          (draw-text-centerx "Press any key." (/ h 2) font-size))
         (return))),))

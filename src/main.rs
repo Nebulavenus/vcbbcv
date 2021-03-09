@@ -285,6 +285,35 @@ fn set_camera_wrapper(camera: &GlspCamera2D) -> GResult<()> {
     Ok(())
 }
 
+// text
+
+struct GlspTextDimensions(macroquad::text::TextDimensions);
+
+impl GlspTextDimensions {
+    fn get_width(&self) -> f32 {
+        self.0.width
+    }
+
+    fn get_height(&self) -> f32 {
+        self.0.height
+    }
+
+    fn get_offset_y(&self) -> f32 {
+        self.0.offset_y
+    }
+}
+
+fn measure_text_wrapper(
+    text: &str,
+    font_size: i32,
+    font_scale: f32,
+) -> GResult<GlspTextDimensions> {
+    use std::convert::TryInto;
+    let fs: u16 = font_size.try_into().unwrap(); // panics if font is too big
+    let td = measure_text(text, None, fs, font_scale);
+    Ok(GlspTextDimensions(td))
+}
+
 fn window_conf() -> Conf {
     Conf {
         window_title: "Something".to_owned(),
@@ -351,6 +380,15 @@ async fn main() {
 
         glsp::bind_rfn("set-camera", &set_camera_wrapper)?;
         glsp::bind_rfn("set-default-camera", &set_default_camera)?;
+
+        // Bind text functions
+        RClassBuilder::<GlspTextDimensions>::new()
+            .name("TextDimensions")
+            .prop_get("width", &GlspTextDimensions::get_width)
+            .prop_get("height", &GlspTextDimensions::get_height)
+            .prop_get("offset-y", &GlspTextDimensions::get_offset_y)
+            .build();
+        glsp::bind_rfn("measure-text", &measure_text_wrapper)?;
 
         // Load scripts
         //glsp::load("scripts/math.glsp")?;

@@ -1,7 +1,7 @@
 (let :black '(0, 0, 0, 255))
 (let :white '(255, 255, 255, 255))
 
-(defclass Example
+(let-class Example
 
   (met update (dt sst)
     (when (and (pressed? 'key:f1) (not (@enab? 'Basic)))
