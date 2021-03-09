@@ -212,7 +212,7 @@ state hierarchy for Game is:
       (wrap Main:draw ()
         (let font-size 30.0)
         (let (w h) (screen-size))
-        (draw-text "Best game ever!" (/ w 2.5) (/ h 2.2) font-size :white)
+        (draw-text "Asteroids" (/ w 2.5) (/ h 2.2) font-size :white)
         (draw-text "Press enter." (/ w 2.4) (/ h 2) font-size :white))),
 
     ; gameplay

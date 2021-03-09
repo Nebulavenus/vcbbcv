@@ -95,6 +95,14 @@
     (let (x y) (.split @pos))
     (draw-circle x y @rad :red)))
 
+#|
+state hierarchy for Game is:
+  (fsm
+    (state* Waiting)  ; like a menu screen
+    (state Playing)   ; gameplay
+    (state GameOver)) ; score screen
+|#
+
 (defclass ArkanoidGame
   (const boffset 5.0)
   (const width 400.0)
@@ -149,60 +157,113 @@
         (let b (Block pos))
         (push! @blocks b))),)
 
-  (met update (dt, sst)
-    (.update @platform dt sst)
-    (.update @ball dt sst)
+  (met update (dt, sst))
+  (met draw ())
 
-    ; snap ball to platform
-    (when (.sticked? @ball)
-      (let [(x px) (y py)] [@platform 'pos])
-      (let ph [Platform 'height])
-      (let pw (/ [Platform 'width] 2.0))
-      (let ball-pos (Vec2 (+ px pw) (- py [Ball 'rad])))
-      (= [@ball 'pos] ball-pos))
+  (fsm
+    (state* Waiting
+      (wrap Main:update (dt, sst)
+        (when (pressed? 'key:enter)
+          (@enab! 'Playing)
+          (return))),
 
-    ; on space unsnap it and let move
-    (when (and (pressed? 'key:space) (.sticked? @ball))
-      (let dir (Vec2 (rand -1.0 1.0) -1.0))
-      (.mul-val! dir 5.0)
-      (= [@ball 'vel] dir)
-      (= [@ball 'stick] #f))
+      (wrap Main:draw ()
+        (let font-size 30.0)
+        (let (w h) (screen-size))
+        (draw-text "Arkanoid" (/ w 2) (/ h 2.2) font-size :white)
+        (draw-text "Press enter." (/ w 2) (/ h 2) font-size :white)),)
 
-    ; collision ball and platform
-    (when (.ball-collided? @platform @ball) (neg! [[@ball 'vel] 'y]))
+    (state Playing
+      (wrap Main:update (dt, sst)
+        (.update @platform dt sst)
+        (.update @ball dt sst)
 
-    ; collision ball and blocks
-    (for (idx b) in (enumerate @blocks)
-      (when (.ball-collided? b @ball)
-        (neg! [[@ball 'vel] 'y])
-        (inc! @score)
-        (del! @blocks idx)))
+        ; snap ball to platform
+        (when (.sticked? @ball)
+          (let [(x px) (y py)] [@platform 'pos])
+          (let ph [Platform 'height])
+          (let pw (/ [Platform 'width] 2.0))
+          (let ball-pos (Vec2 (+ px pw) (- py [Ball 'rad])))
+          (= [@ball 'pos] ball-pos))
 
-    ; check for lose
-    (when (.lost? @ball)
-      (= [@ball 'stick] #t)
-      (= [@ball 'lose] #f)))
+        ; on space unsnap it and let move
+        (when (and (pressed? 'key:space) (.sticked? @ball))
+          (let dir (Vec2 (rand -1.0 1.0) -1.0))
+          (.mul-val! dir 5.0)
+          (= [@ball 'vel] dir)
+          (= [@ball 'stick] #f))
 
-  (met draw ()
-    (clear-background :black)
+        ; collision ball and platform
+        (when (.ball-collided? @platform @ball) (neg! [[@ball 'vel] 'y]))
 
-    ; render game
-    (@setup-game-cam)
+        ; collision ball and blocks
+        (for (idx b) in (enumerate @blocks)
+          (when (.ball-collided? b @ball)
+            (neg! [[@ball 'vel] 'y])
+            (inc! @score)
+            (del! @blocks idx)))
 
-    ; borders
-    (draw-rectangle 0.0 0.0 @width @height :yellow)
-    (draw-rectangle @boffset @boffset (- @width (* @boffset 2.0)) (- @height (* @boffset 2.0)) :black)
+        ; check for lose
+        (when (.lost? @ball)
+          (dec! @score 5)
+          (= [@ball 'stick] #t)
+          (= [@ball 'lose] #f))
+          
+        ; win if no more blocks
+        ; lose if score is negative
+        (when (or (== (len @blocks) 0) (< @score 0))
+          (@enab! 'GameOver)
+          (return)))
 
-    ; blocks
-    (for b in @blocks
-      (.draw b))
+      (wrap Main:draw ()
+        (clear-background :black)
 
-    ; platform
-    (.draw @platform)
+        ; render game
+        (@setup-game-cam)
 
-    ; ball
-    (.draw @ball)
-    
-    ; render ui
-    (@setup-ui-cam)
-    (draw-text "Score: {@score}" 30.0 30.0 30.0 :white)),)
+        ; borders
+        (draw-rectangle 0.0 0.0 @width @height :yellow)
+        (draw-rectangle @boffset @boffset (- @width (* @boffset 2.0)) (- @height (* @boffset 2.0)) :black)
+
+        ; blocks
+        (for b in @blocks
+          (.draw b))
+
+        ; platform
+        (.draw @platform)
+
+        ; ball
+        (.draw @ball)
+        
+        ; render ui
+        (@setup-ui-cam)
+        (draw-text "Score: {@score}" 30.0 30.0 30.0 :white)),)
+
+    (state GameOver
+      (const s-to-skip 1.0)
+      (field timer 0.0) ; to not to skip accidentally
+
+      (wrap Main:update (dt, sst)
+        (inc! @timer dt)
+
+        (when (>= @timer @s-to-skip)
+          (when (any? pressed? '(key:enter key:space))
+            (@reset)
+            (@enab! 'Waiting)
+            (return))))
+
+      (wrap Main:draw ()
+        (let font-size 30.0)
+        (let (w h) (screen-size))
+
+        ; lose if score is negativ
+        (when (< @score 0)
+          (draw-text "You lose!" (/ w 2.4) (/ h 2) font-size :white))
+
+        ; win if no more blocks
+        (when (== (len @blocks) 0)
+          (draw-text "You win!" (/ w 2.4) (/ h 2) font-size :white))
+
+        (when (>= @timer @s-to-skip)
+          (draw-text "Press enter or space." (/ w 2.4) (/ h 1.5) font-size :white))
+        (return)),),))
