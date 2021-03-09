@@ -9,12 +9,16 @@
       (return))
     (when (and (pressed? 'key:f2) (not (@enab? 'Asteroids)))
       (@enab! 'Asteroids)
+      (return))
+    (when (and (pressed? 'key:f3) (not (@enab? 'Arkanoid)))
+      (@enab! 'Arkanoid)
       (return)))
 
   (met draw ()
     (clear-background :black)
     (draw-text "F1: Basic" 30.0 30.0 30.0 :white)
-    (draw-text "F2: Asteroids" 30.0 60.0 30.0 :white))
+    (draw-text "F2: Asteroids" 30.0 60.0 30.0 :white)
+    (draw-text "F3: Arkanoid" 30.0 90.0 30.0 :white))
 
   (fsm
     (state Basic
@@ -49,7 +53,7 @@
       (wrap Main:draw ()
         ;(@base)
         (.draw @asteroids-game))),
-    (state* Arkanoid
+    (state Arkanoid
       (field arkanoid-game)
 
       (init-state ()

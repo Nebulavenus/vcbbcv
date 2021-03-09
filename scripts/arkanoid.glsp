@@ -148,12 +148,11 @@ state hierarchy for Game is:
     (let step-x (/ [Block 'width] 2))
     (let max-x (/ (- @width step-x) (+ [Block 'width] step-x)))
     (= max-x (round max-x))
-    (dbg max-x)
 
     (let step-y (/ [Block 'height] 1.0))
     (let max-y (/ (- (/ @height 2.0) step-y) (+ [Block 'height] step-y)))
     (= max-y (round max-y))
-    (dbg max-y)
+
     (forn (iy max-y)
       (forn (ix max-x)
         (let x (* ix (+ [Block 'width] step-x)))
@@ -263,11 +262,13 @@ state hierarchy for Game is:
 
         ; lose if score is negativ
         (when (< @score 0)
-          (draw-text-centerx "You lose!" (/ h 2) font-size))
+          (draw-text-centerx "You lose!" (/ h 2) font-size)
+          (draw-text-centerx "Final score: {@score}" (/ h 1.8) font-size))
 
         ; win if no more blocks
         (when (== (len @blocks) 0)
-          (draw-text-centerx "You win!" (/ h 2) font-size))
+          (draw-text-centerx "You win!" (/ h 2) font-size)
+          (draw-text-centerx "Final score: {@score}" (/ h 1.8) font-size))
 
         (when (>= @timer @s-to-skip)
           (draw-text-centerx "Press enter or space!" (/ h 1.5) font-size))
