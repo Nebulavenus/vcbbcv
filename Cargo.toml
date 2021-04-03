@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 glsp = "0.2.0"
-macroquad = "0.3.0-alpha.15"
+macroquad = "0.3.0-alpha.17"
 
 [profile.dev.package.'*']
 opt-level = 3
